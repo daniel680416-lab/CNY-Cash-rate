@@ -39,54 +39,77 @@ function getTaipeiTimeInfo() {
 }
 
 async function fetchRates() {
-  console.log('正在從台灣銀行下載匯率資料...');
-  const response = await fetch(BOT_CSV_URL, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
-    }
-  });
+  console.log('正在從台灣銀行下載即時匯率資料...');
+  try {
+    const response = await fetch(BOT_CSV_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
 
-  if (!response.ok) {
-    throw new Error(`無法下載台銀匯率資料，狀態碼: ${response.status}`);
-  }
-  
-  const csvText = await response.text();
-  const lines = csvText.split('\n');
-  
-  let cnyData = null;
-  
-  // 尋找人民幣 (CNY) 的資料列
-  for (const line of lines) {
-    const cols = line.split(',');
-    if (cols.length > 0 && cols[0].trim() === 'CNY') {
-      cnyData = cols;
-      break;
+    if (response.ok) {
+      const csvText = await response.text();
+      const lines = csvText.split('\n');
+      let cnyData = null;
+      for (const line of lines) {
+        const cols = line.split(',');
+        if (cols.length > 0 && cols[0].trim() === 'CNY') {
+          cnyData = cols;
+          break;
+        }
+      }
+      if (cnyData) {
+        const buyRate = parseFloat(cnyData[2]);
+        const sellRate = parseFloat(cnyData[12]);
+        if (!isNaN(buyRate) && !isNaN(sellRate)) {
+          const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+          console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
+          return { buyRate, sellRate, averageRate };
+        }
+      }
     }
+    console.warn('無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...');
+  } catch (error) {
+    console.warn(`台銀直連連線失敗: ${error.message}，準備啟用備用資料源 (FinMind)...`);
   }
-  
-  if (!cnyData) {
-    console.error('--- 診斷資訊 ---');
-    console.error('Content-Type:', response.headers.get('content-type'));
-    console.error('回應內容前 500 字元:', csvText.substring(0, 500));
-    console.error('----------------');
-    throw new Error('在台銀匯率資料中找不到人民幣 (CNY) 資料，伺服器可能傳回了阻擋網頁而非 CSV');
+
+  // 備用資料源: FinMind API
+  return await fetchFromFinMind();
+}
+
+async function fetchFromFinMind() {
+  const now = new Date();
+  // 獲取前 5 天的日期，確保 API 能傳回足夠的資料來抓取最新一筆
+  const pastDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const finmindUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=${pastDate}`;
+
+  console.log(`正在從備用資料源 (FinMind API) 下載匯率... URL: ${finmindUrl}`);
+  const response = await fetch(finmindUrl);
+  if (!response.ok) {
+    throw new Error(`FinMind API 請求失敗，狀態碼: ${response.status}`);
   }
-  
-  // 索引 2: 現金買入 (買進), 索引 12: 現金賣出
-  const buyRate = parseFloat(cnyData[2]);
-  const sellRate = parseFloat(cnyData[12]);
-  
+
+  const result = await response.json();
+  if (!result || !result.data || result.data.length === 0) {
+    throw new Error('FinMind API 未傳回任何匯率資料');
+  }
+
+  // 取得最新一筆的匯率紀錄 (最後一項)
+  const latest = result.data[result.data.length - 1];
+  const buyRate = parseFloat(latest.cash_buy);
+  const sellRate = parseFloat(latest.cash_sell);
+
   if (isNaN(buyRate) || isNaN(sellRate)) {
-    throw new Error(`解析匯率數值失敗: buy_rate=${cnyData[2]}, sell_rate=${cnyData[12]}`);
+    throw new Error(`FinMind 匯率解析失敗: cash_buy=${latest.cash_buy}, cash_sell=${latest.cash_sell}`);
   }
-  
-  // 計算平均匯率，四捨五入至小數第二位
+
   const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-  
+  console.log(`🎉 成功從 FinMind API 獲取最新匯率 (${latest.date}): 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
+
   return {
     buyRate,
     sellRate,
