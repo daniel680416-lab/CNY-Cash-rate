@@ -1,0 +1,58 @@
+name: CNY Cash Rate Scraper & PWA Deployer
+
+on:
+  schedule:
+    # 台灣時間週一至週五 09:18 至 16:18 每小時 18 分自動執行一次
+    # (對應 UTC 時間 01:18 至 08:18，Cron: 18 1-8 * * 1-5)
+    - cron: '18 1-8 * * 1-5'
+  workflow_dispatch:
+    # 允許手動從 GitHub 介面觸發
+
+# 設定部署 GitHub Pages 所需的權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 確保同時只有一個部署工作在執行
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  scrape-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run Scraper
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: node scraper.js
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 上傳整個專案目錄（包含產出的 data.json 及前端靜態資源）
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

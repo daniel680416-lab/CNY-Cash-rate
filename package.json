@@ -1,0 +1,16 @@
+{
+  "name": "cny-cash-rate-tracker",
+  "version": "1.0.0",
+  "description": "PWA tool to track CNY cash exchange rate from Bank of Taiwan using MongoDB Atlas and GitHub Pages.",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
