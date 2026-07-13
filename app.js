@@ -539,8 +539,8 @@ function setupSettingsHandlers() {
       
       if (confirm('確定要清除本地快取並重新與伺服器同步資料嗎？')) {
         await clearIndexedDBCache();
-        alert('本地快取已清除，正在從伺服器重新同步最新的 data.json...');
         await refreshData();
+        alert('🎉 資料同步完成！已成功從伺服器載入最新數據。');
       }
     });
   }
