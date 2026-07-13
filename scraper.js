@@ -40,7 +40,16 @@ function getTaipeiTimeInfo() {
 
 async function fetchRates() {
   console.log('正在從台灣銀行下載匯率資料...');
-  const response = await fetch(BOT_CSV_URL);
+  const response = await fetch(BOT_CSV_URL, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
+
   if (!response.ok) {
     throw new Error(`無法下載台銀匯率資料，狀態碼: ${response.status}`);
   }
@@ -60,7 +69,11 @@ async function fetchRates() {
   }
   
   if (!cnyData) {
-    throw new Error('在台銀匯率資料中找不到人民幣 (CNY) 資料');
+    console.error('--- 診斷資訊 ---');
+    console.error('Content-Type:', response.headers.get('content-type'));
+    console.error('回應內容前 500 字元:', csvText.substring(0, 500));
+    console.error('----------------');
+    throw new Error('在台銀匯率資料中找不到人民幣 (CNY) 資料，伺服器可能傳回了阻擋網頁而非 CSV');
   }
   
   // 索引 2: 現金買入 (買進), 索引 12: 現金賣出
