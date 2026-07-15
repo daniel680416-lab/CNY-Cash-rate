@@ -55,6 +55,7 @@ async function fetchRates() {
           return { ...csvRates, source: 'bot' };
         } else {
           console.warn('[Scraper] ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。');
+          console.warn(`[Scraper] ScraperAPI 回傳內容前 500 字元: "${csvText.substring(0, 500).replace(/\r?\n/g, ' ')}"`);
         }
       } else {
         const errText = await response.text().catch(() => '');
