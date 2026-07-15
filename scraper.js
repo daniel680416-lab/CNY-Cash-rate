@@ -44,13 +44,22 @@ async function fetchRates() {
     console.log(`[Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...`);
     try {
       const response = await fetch(gasProxyUrl);
+      console.log(`[Scraper] GAS 轉接站回應狀態碼: ${response.status}`);
       if (response.ok) {
         const csvText = await response.text();
+        console.log(`[Scraper] GAS 轉接站回應長度: ${csvText.length} 字元`);
+        console.log(`[Scraper] GAS 轉接站回應開頭 200 字元: "${csvText.substring(0, 200).replace(/\r?\n/g, ' ')}"`);
+        
         const csvRates = parseCsvRates(csvText);
         if (csvRates) {
           console.log(`🎉 [Scraper] 成功透過 Google Apps Script 轉接站獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
           return csvRates;
+        } else {
+          console.warn('[Scraper] GAS 轉接站回傳內容無法解析為台銀匯率 CSV 格式。');
         }
+      } else {
+        const errText = await response.text().catch(() => '');
+        console.warn(`[Scraper] GAS 轉接站請求失敗，回應: ${errText.substring(0, 200)}`);
       }
       console.warn('[Scraper] 透過 Google Apps Script 轉接站獲取失敗，降級使用直連/FinMind...');
     } catch (error) {
