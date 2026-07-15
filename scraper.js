@@ -197,6 +197,54 @@ async function syncAndExport(rates) {
     );
     console.log('當日資料 Upsert 寫入成功！');
 
+    // 檢查資料庫筆數，若小於 30 筆，自動從 FinMind 補充近 30 天歷史數據
+    try {
+      const count = await collection.countDocuments({});
+      console.log(`目前資料庫中有 ${count} 筆記錄。`);
+      if (count < 30) {
+        console.log('資料庫中歷史紀錄不足 30 筆，啟動歷史數據自動回填機制...');
+        const backfillDays = 35;
+        const pastDateStr = new Date(Date.now() - backfillDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const finmindUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=${pastDateStr}`;
+        const res = await fetch(finmindUrl);
+        if (res.ok) {
+          const result = await res.json();
+          if (result && result.data && result.data.length > 0) {
+            console.log(`從 FinMind 獲取到 ${result.data.length} 筆歷史數據，準備回填...`);
+            for (const item of result.data) {
+              const buyRate = parseFloat(item.cash_buy);
+              const sellRate = parseFloat(item.cash_sell);
+              if (!isNaN(buyRate) && !isNaN(sellRate)) {
+                const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+                // 設定為台北時間 16:00
+                const recordTime = new Date(`${item.date}T16:00:00+08:00`);
+                const doc = {
+                  date: item.date,
+                  last_updated_time: '16:00',
+                  timestamp: recordTime.getTime(),
+                  buy_rate: buyRate,
+                  sell_rate: sellRate,
+                  average_rate: avgRate,
+                  updated_at: new Date(),
+                  source: 'bot'
+                };
+                
+                // 使用 $setOnInsert 僅在不存在時寫入，避免覆蓋已存在的精確資料
+                await collection.updateOne(
+                  { date: item.date },
+                  { $setOnInsert: doc },
+                  { upsert: true }
+                );
+              }
+            }
+            console.log('歷史數據回填完畢。');
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('歷史數據自動回填失敗:', err.message);
+    }
+
     // 撈取近 30 天的歷史匯率紀錄 (依日期降序)
     console.log('正在從 MongoDB 撈取近 30 天歷史數據...');
     const history = await collection
