@@ -39,6 +39,25 @@ function getTaipeiTimeInfo() {
 }
 
 async function fetchRates() {
+  const gasProxyUrl = process.env.GAS_PROXY_URL;
+  if (gasProxyUrl) {
+    console.log(`[Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...`);
+    try {
+      const response = await fetch(gasProxyUrl);
+      if (response.ok) {
+        const csvText = await response.text();
+        const csvRates = parseCsvRates(csvText);
+        if (csvRates) {
+          console.log(`🎉 [Scraper] 成功透過 Google Apps Script 轉接站獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
+          return csvRates;
+        }
+      }
+      console.warn('[Scraper] 透過 Google Apps Script 轉接站獲取失敗，降級使用直連/FinMind...');
+    } catch (error) {
+      console.warn(`[Scraper] Google Apps Script 轉接失敗: ${error.message}，降級使用直連/FinMind...`);
+    }
+  }
+
   console.log('正在從台灣銀行下載即時匯率資料...');
   try {
     const response = await fetch(BOT_CSV_URL, {
@@ -53,23 +72,10 @@ async function fetchRates() {
 
     if (response.ok) {
       const csvText = await response.text();
-      const lines = csvText.split('\n');
-      let cnyData = null;
-      for (const line of lines) {
-        const cols = line.split(',');
-        if (cols.length > 0 && cols[0].trim() === 'CNY') {
-          cnyData = cols;
-          break;
-        }
-      }
-      if (cnyData) {
-        const buyRate = parseFloat(cnyData[2]);
-        const sellRate = parseFloat(cnyData[12]);
-        if (!isNaN(buyRate) && !isNaN(sellRate)) {
-          const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-          console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
-          return { buyRate, sellRate, averageRate };
-        }
+      const csvRates = parseCsvRates(csvText);
+      if (csvRates) {
+        console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
+        return csvRates;
       }
     }
     console.warn('無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...');
@@ -79,6 +85,27 @@ async function fetchRates() {
 
   // 備用資料源: FinMind API
   return await fetchFromFinMind();
+}
+
+function parseCsvRates(csvText) {
+  const lines = csvText.split('\n');
+  let cnyData = null;
+  for (const line of lines) {
+    const cols = line.split(',');
+    if (cols.length > 0 && cols[0].trim() === 'CNY') {
+      cnyData = cols;
+      break;
+    }
+  }
+  if (cnyData) {
+    const buyRate = parseFloat(cnyData[2]);
+    const sellRate = parseFloat(cnyData[12]);
+    if (!isNaN(buyRate) && !isNaN(sellRate)) {
+      const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+      return { buyRate, sellRate, averageRate };
+    }
+  }
+  return null;
 }
 
 async function fetchFromFinMind() {
