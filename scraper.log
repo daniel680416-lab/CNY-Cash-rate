@@ -1,6 +1,6 @@
 [Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...
 [Scraper] GAS 轉接站回應狀態碼: 200
-[Scraper] GAS 轉接站回應長度: 939865 字元
+[Scraper] GAS 轉接站回應長度: 938407 字元
 [Scraper] GAS 轉接站回應開頭 200 字元: "<!doctype html><html lang="en-US" dir="ltr"><head><base href="https://accounts.google.com/v3/signin/"><link rel="preconnect" href="//www.gstatic.com"><meta name="referrer" content="origin"><style data"
 [Scraper] GAS 轉接站回傳內容無法解析為台銀匯率 CSV 格式。
 [Scraper] 透過 Google Apps Script 轉接站獲取失敗，降級使用直連/FinMind...
@@ -11,17 +11,21 @@
 成功解析台銀最新匯率: 現金買進=4.65, 現金賣出=4.812, 平均值=4.73
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-07-15 14:32): {
+準備寫入/更新匯率資料 (2026-07-15 14:35): {
   date: '2026-07-15',
-  last_updated_time: '14:32',
-  timestamp: 1784097176577,
+  last_updated_time: '14:35',
+  timestamp: 1784097315900,
   buy_rate: 4.65,
   sell_rate: 4.812,
   average_rate: 4.73,
-  updated_at: 2026-07-15T06:32:56.577Z,
+  updated_at: 2026-07-15T06:35:15.900Z,
   source: 'bot'
 }
 當日資料 Upsert 寫入成功！
+目前資料庫中有 3 筆記錄。
+資料庫中歷史紀錄不足 30 筆，啟動歷史數據自動回填機制...
+從 FinMind 獲取到 24 筆歷史數據，準備回填...
+歷史數據回填完畢。
 正在從 MongoDB 撈取近 30 天歷史數據...
 成功匯出近 30 天歷史匯率至: /home/runner/work/CNY-Cash-rate/CNY-Cash-rate/data.json
 MongoDB 連線已關閉。
