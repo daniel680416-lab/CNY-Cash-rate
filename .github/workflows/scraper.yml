@@ -12,7 +12,7 @@ on:
 
 # 設定部署 GitHub Pages 所需的權限
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -45,7 +45,17 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GAS_PROXY_URL: ${{ secrets.GAS_PROXY_URL }}
-        run: node scraper.js
+        run: |
+          node scraper.js > scraper.log 2>&1 || (cat scraper.log && exit 1)
+          cat scraper.log
+
+      - name: Commit and Push Log
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scraper.log
+          git commit -m "Diagnostics: save scraper execution log [skip ci]" || echo "No changes to log"
+          git push origin main || echo "Failed to push log"
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
