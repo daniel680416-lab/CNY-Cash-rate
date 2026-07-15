@@ -1,6 +1,6 @@
 [Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...
 [Scraper] GAS 轉接站回應狀態碼: 200
-[Scraper] GAS 轉接站回應長度: 1918 字元
+[Scraper] GAS 轉接站回應長度: 1914 字元
 [Scraper] GAS 轉接站回應開頭 200 字元: "<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><title>Challenge Validation</title><link rel="styleshee"
 [Scraper] GAS 轉接站回傳內容無法解析為台銀匯率 CSV 格式。
 [Scraper] 透過 Google Apps Script 轉接站獲取失敗，降級使用直連/FinMind...
@@ -11,14 +11,14 @@
 成功解析台銀最新匯率: 現金買進=4.659, 現金賣出=4.821, 平均值=4.74，來源=finmind
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-07-15 19:41): {
+準備寫入/更新匯率資料 (2026-07-15 19:45): {
   date: '2026-07-15',
-  last_updated_time: '19:41',
-  timestamp: 1784115681233,
+  last_updated_time: '19:45',
+  timestamp: 1784115956700,
   buy_rate: 4.659,
   sell_rate: 4.821,
   average_rate: 4.74,
-  updated_at: 2026-07-15T11:41:21.233Z,
+  updated_at: 2026-07-15T11:45:56.700Z,
   source: 'finmind'
 }
 當日資料 Upsert 寫入成功！
