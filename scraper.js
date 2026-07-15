@@ -53,7 +53,7 @@ async function fetchRates() {
         const csvRates = parseCsvRates(csvText);
         if (csvRates) {
           console.log(`🎉 [Scraper] 成功透過 Google Apps Script 轉接站獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
-          return csvRates;
+          return { ...csvRates, source: 'bot' };
         } else {
           console.warn('[Scraper] GAS 轉接站回傳內容無法解析為台銀匯率 CSV 格式。');
         }
@@ -84,7 +84,7 @@ async function fetchRates() {
       const csvRates = parseCsvRates(csvText);
       if (csvRates) {
         console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
-        return csvRates;
+        return { ...csvRates, source: 'bot' };
       }
     }
     console.warn('無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...');
@@ -149,7 +149,8 @@ async function fetchFromFinMind() {
   return {
     buyRate,
     sellRate,
-    averageRate
+    averageRate,
+    source: 'finmind'
   };
 }
 
@@ -181,7 +182,7 @@ async function syncAndExport(rates) {
       sell_rate: rates.sellRate,
       average_rate: rates.averageRate,
       updated_at: now,
-      source: 'bot'
+      source: rates.source || 'bot'
     };
     
     console.log(`準備寫入/更新匯率資料 (${dateStr} ${timeStr}):`, document);
@@ -226,7 +227,7 @@ async function syncAndExport(rates) {
                   sell_rate: sellRate,
                   average_rate: avgRate,
                   updated_at: new Date(),
-                  source: 'bot'
+                  source: 'finmind'
                 };
                 
                 // 使用 $setOnInsert 僅在不存在時寫入，避免覆蓋已存在的精確資料
@@ -278,7 +279,7 @@ async function syncAndExport(rates) {
 async function main() {
   try {
     const rates = await fetchRates();
-    console.log(`成功解析台銀最新匯率: 現金買進=${rates.buyRate}, 現金賣出=${rates.sellRate}, 平均值=${rates.averageRate}`);
+    console.log(`成功解析台銀最新匯率: 現金買進=${rates.buyRate}, 現金賣出=${rates.sellRate}, 平均值=${rates.averageRate}，來源=${rates.source}`);
     await syncAndExport(rates);
     console.log('匯率爬取、資料庫同步與 data.json 導出作業已全部順利完成！');
   } catch (error) {

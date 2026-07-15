@@ -251,7 +251,16 @@ function updateDashboardUI() {
   document.getElementById('sellRateValue').textContent = today.sell_rate.toFixed(3);
   document.getElementById('avgRateValue').textContent = today.average_rate.toFixed(2);
   
-  const sourceLabel = today.source === 'finmind_live' ? '前端即時同步' : '台銀收盤價/最新價';
+  let sourceLabel = '';
+  if (today.source === 'bot') {
+    sourceLabel = '台銀官方牌告 (100% 同步)';
+  } else if (today.source === 'finmind') {
+    sourceLabel = '備用資料源 (FinMind)';
+  } else if (today.source === 'finmind_live') {
+    sourceLabel = '前端即時同步 (備用)';
+  } else {
+    sourceLabel = '台銀牌告匯率';
+  }
   document.getElementById('lastUpdatedTime').textContent = `最後更新時間：${today.date} ${today.last_updated_time} (${sourceLabel})`;
 
   // Update trend indicators
