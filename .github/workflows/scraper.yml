@@ -45,6 +45,7 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GAS_PROXY_URL: ${{ secrets.GAS_PROXY_URL }}
+          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
         run: |
           node scraper.js > scraper.log 2>&1 || (cat scraper.log && exit 1)
           cat scraper.log

@@ -39,6 +39,32 @@ function getTaipeiTimeInfo() {
 }
 
 async function fetchRates() {
+  const scraperApiKey = process.env.SCRAPER_API_KEY;
+  if (scraperApiKey) {
+    console.log(`[Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...`);
+    try {
+      const scraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_CSV_URL)}`;
+      const response = await fetch(scraperUrl);
+      console.log(`[Scraper] ScraperAPI 回應狀態碼: ${response.status}`);
+      if (response.ok) {
+        const csvText = await response.text();
+        const csvRates = parseCsvRates(csvText);
+        if (csvRates) {
+          console.log(`🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
+          return { ...csvRates, source: 'bot' };
+        } else {
+          console.warn('[Scraper] ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。');
+        }
+      } else {
+        const errText = await response.text().catch(() => '');
+        console.warn(`[Scraper] ScraperAPI 請求失敗，回應: ${errText.substring(0, 200)}`);
+      }
+      console.warn('[Scraper] 透過 ScraperAPI 獲取失敗，降級使用其他管道...');
+    } catch (error) {
+      console.warn(`[Scraper] ScraperAPI 請求失敗: ${error.message}，降級使用其他管道...`);
+    }
+  }
+
   const gasProxyUrl = process.env.GAS_PROXY_URL;
   if (gasProxyUrl) {
     console.log(`[Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...`);
