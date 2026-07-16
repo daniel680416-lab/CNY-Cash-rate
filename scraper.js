@@ -52,10 +52,10 @@ async function fetchRates() {
         
         // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
         if (csvText.includes("Challenge Validation") || csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-          console.log("[Scraper] 偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI Premium 住宅代理...");
-          const premiumUrl = `${scraperUrl}&premium=true`;
-          response = await fetch(premiumUrl);
-          console.log(`[Scraper] ScraperAPI Premium 回應狀態碼: ${response.status}`);
+          console.log("[Scraper] 偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI JS 渲染 (render=true)...");
+          const renderUrl = `${scraperUrl}&render=true`;
+          response = await fetch(renderUrl);
+          console.log(`[Scraper] ScraperAPI JS 渲染回應狀態碼: ${response.status}`);
           if (response.ok) {
             csvText = await response.text();
           }
@@ -137,7 +137,17 @@ async function fetchRates() {
 }
 
 function parseCsvRates(csvText) {
-  const lines = csvText.split('\n');
+  let cleanText = csvText;
+  if (csvText.includes("<html") || csvText.includes("<pre")) {
+    const preMatch = csvText.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+    if (preMatch) {
+      cleanText = preMatch[1];
+    } else {
+      cleanText = csvText.replace(/<[^>]*>/g, "\n");
+    }
+  }
+
+  const lines = cleanText.split(/\r?\n/);
   let cnyData = null;
   for (const line of lines) {
     const cols = line.split(',');
