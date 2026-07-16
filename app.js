@@ -192,10 +192,13 @@ async function supplementTodayRateIfMissing(data) {
   }).replace(/\//g, '-');
 
   const latestRecordDate = data[0].date;
+  const latestRecordSource = data[0].source;
 
-  // 如果伺服器最新一筆日期不是今天，嘗試從前端獲取今日即時數據
-  if (latestRecordDate !== todayStr) {
-    console.log(`[CNY Tracker] 歷史資料最新日期為 ${latestRecordDate}，今日 (${todayStr}) 尚未完成雲端排程，嘗試獲取今日即時數據...`);
+  // 如果伺服器最新一筆日期不是今天，或者雖然日期是今天但不是 100% 同步的官方來源（如 finmind），則嘗試從前端獲取今日即時官方數據
+  const needsSync = latestRecordDate !== todayStr || (latestRecordSource !== 'bot' && latestRecordSource !== 'bot_live');
+
+  if (needsSync) {
+    console.log(`[CNY Tracker] 最新日期為 ${latestRecordDate} (來源: ${latestRecordSource})，今日 (${todayStr}) 尚未完成台銀官方同步，嘗試獲取即時數據...`);
 
     // 1. 優先嘗試透過 Cloudflare Worker 獲取台銀官方實時匯率
     if (typeof CLOUDFLARE_WORKER_URL === 'string' && CLOUDFLARE_WORKER_URL.trim() !== '') {
@@ -205,8 +208,16 @@ async function supplementTodayRateIfMissing(data) {
         if (res.ok) {
           const todayRecord = await res.json();
           if (todayRecord && todayRecord.date === todayStr && todayRecord.buy_rate && todayRecord.sell_rate) {
-            console.log('[CNY Tracker] 🎉 成功透過 Cloudflare Worker 獲取今日即時匯率！並入列表:', todayRecord);
-            return [todayRecord, ...data];
+            console.log('[CNY Tracker] 🎉 成功透過 Cloudflare Worker 獲取今日即時官方匯率！', todayRecord);
+            
+            // 如果最新一筆日期就是今天，但來源是 finmind，我們用今日即時官方紀錄覆蓋/取代它
+            if (latestRecordDate === todayStr) {
+              const updatedData = [...data];
+              updatedData[0] = todayRecord;
+              return updatedData;
+            } else {
+              return [todayRecord, ...data];
+            }
           }
         }
       } catch (err) {
@@ -214,38 +225,40 @@ async function supplementTodayRateIfMissing(data) {
       }
     }
 
-    // 2. 降級嘗試直連 FinMind API 獲取
-    try {
-      const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const finmindUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=${pastDate}`;
-      
-      const res = await fetch(finmindUrl);
-      if (res.ok) {
-        const result = await res.json();
-        if (result && result.data && result.data.length > 0) {
-          const latest = result.data[result.data.length - 1];
-          if (latest.date === todayStr) {
-            const buyRate = parseFloat(latest.cash_buy);
-            const sellRate = parseFloat(latest.cash_sell);
-            if (!isNaN(buyRate) && !isNaN(sellRate)) {
-              const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-              const todayRecord = {
-                date: todayStr,
-                buy_rate: buyRate,
-                sell_rate: sellRate,
-                average_rate: avgRate,
-                timestamp: Date.now(),
-                last_updated_time: new Date().toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }),
-                source: 'finmind_live'
-              };
-              console.log('[CNY Tracker] 🎉 成功從備用 API (FinMind) 獲取今日即時匯率！並入列表:', todayRecord);
-              return [todayRecord, ...data];
+    // 2. 降級嘗試直連 FinMind API 獲取 (僅在今日完全無任何紀錄時才執行)
+    if (latestRecordDate !== todayStr) {
+      try {
+        const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const finmindUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=${pastDate}`;
+        
+        const res = await fetch(finmindUrl);
+        if (res.ok) {
+          const result = await res.json();
+          if (result && result.data && result.data.length > 0) {
+            const latest = result.data[result.data.length - 1];
+            if (latest.date === todayStr) {
+              const buyRate = parseFloat(latest.cash_buy);
+              const sellRate = parseFloat(latest.cash_sell);
+              if (!isNaN(buyRate) && !isNaN(sellRate)) {
+                const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+                const todayRecord = {
+                  date: todayStr,
+                  buy_rate: buyRate,
+                  sell_rate: sellRate,
+                  average_rate: avgRate,
+                  timestamp: Date.now(),
+                  last_updated_time: new Date().toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }),
+                  source: 'finmind_live'
+                };
+                console.log('[CNY Tracker] 🎉 成功從備用 API (FinMind) 獲取今日即時匯率！並入列表:', todayRecord);
+                return [todayRecord, ...data];
+              }
             }
           }
         }
+      } catch (err) {
+        console.warn('[CNY Tracker] 從備用 API (FinMind) 獲取今日數據失敗:', err.message);
       }
-    } catch (err) {
-      console.warn('[CNY Tracker] 從備用 API (FinMind) 獲取今日數據失敗:', err.message);
     }
   }
   return data;

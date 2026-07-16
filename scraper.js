@@ -44,68 +44,55 @@ async function fetchRates() {
   if (scraperApiKey) {
     console.log(`[Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...`);
     try {
+      const BOT_HTML_URL = 'https://rate.bot.com.tw/xrt?Lang=zh-TW';
       const scraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_CSV_URL)}`;
+      const htmlScraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_HTML_URL)}&render=true`;
+
       let response = await fetch(scraperUrl);
       console.log(`[Scraper] ScraperAPI 回應狀態碼: ${response.status}`);
-      if (response.ok) {
-        let csvText = await response.text();
-        
-        // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
-        if (csvText.includes("Challenge Validation") || csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-          console.log("[Scraper] 偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI JS 渲染 (render=true)...");
-          const renderUrl = `${scraperUrl}&render=true`;
-          response = await fetch(renderUrl);
-          console.log(`[Scraper] ScraperAPI JS 渲染回應狀態碼: ${response.status}`);
-          if (response.ok) {
-            csvText = await response.text();
-          }
+      let text = await response.text();
+
+      // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
+      if (!response.ok || text.includes("Challenge Validation") || text.includes("<html") || text.includes("<!DOCTYPE")) {
+        console.log("[Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...");
+        response = await fetch(htmlScraperUrl);
+        console.log(`[Scraper] ScraperAPI HTML 渲染回應狀態碼: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`ScraperAPI HTML 渲染失敗，狀態碼: ${response.status}`);
+        }
+        text = await response.text();
+
+        // 優先使用精確屬性匹配正則
+        let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
+        if (!match) {
+          // 降級使用寬鬆正則
+          match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
         }
 
-        const csvRates = parseCsvRates(csvText);
+        if (match) {
+          const buyRate = parseFloat(match[1]);
+          const sellRate = parseFloat(match[2]);
+          const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+          console.log(`🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
+          return { buyRate, sellRate, averageRate, source: 'bot' };
+        } else {
+          throw new Error(`HTML 內容中未找到人民幣匯率欄位！收到的內容前 500 字元: "${text.substring(0, 500).replace(/\r?\n/g, ' ')}"`);
+        }
+      } else {
+        // 解析 CSV
+        const csvRates = parseCsvRates(text);
         if (csvRates) {
           console.log(`🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
           return { ...csvRates, source: 'bot' };
         } else {
-          console.warn('[Scraper] ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。');
-          console.warn(`[Scraper] ScraperAPI 回傳內容前 500 字元: "${csvText.substring(0, 500).replace(/\r?\n/g, ' ')}"`);
+          throw new Error('ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。');
         }
-      } else {
-        const errText = await response.text().catch(() => '');
-        console.warn(`[Scraper] ScraperAPI 請求失敗，回應: ${errText.substring(0, 200)}`);
       }
-      console.warn('[Scraper] 透過 ScraperAPI 獲取失敗，降級使用其他管道...');
     } catch (error) {
       console.warn(`[Scraper] ScraperAPI 請求失敗: ${error.message}，降級使用其他管道...`);
     }
   }
 
-  const gasProxyUrl = process.env.GAS_PROXY_URL;
-  if (gasProxyUrl) {
-    console.log(`[Scraper] 偵測到 Google Apps Script 轉接站，嘗試透過轉接站獲取 100% 同步匯率...`);
-    try {
-      const response = await fetch(gasProxyUrl);
-      console.log(`[Scraper] GAS 轉接站回應狀態碼: ${response.status}`);
-      if (response.ok) {
-        const csvText = await response.text();
-        console.log(`[Scraper] GAS 轉接站回應長度: ${csvText.length} 字元`);
-        console.log(`[Scraper] GAS 轉接站回應開頭 200 字元: "${csvText.substring(0, 200).replace(/\r?\n/g, ' ')}"`);
-        
-        const csvRates = parseCsvRates(csvText);
-        if (csvRates) {
-          console.log(`🎉 [Scraper] 成功透過 Google Apps Script 轉接站獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
-          return { ...csvRates, source: 'bot' };
-        } else {
-          console.warn('[Scraper] GAS 轉接站回傳內容無法解析為台銀匯率 CSV 格式。');
-        }
-      } else {
-        const errText = await response.text().catch(() => '');
-        console.warn(`[Scraper] GAS 轉接站請求失敗，回應: ${errText.substring(0, 200)}`);
-      }
-      console.warn('[Scraper] 透過 Google Apps Script 轉接站獲取失敗，降級使用直連/FinMind...');
-    } catch (error) {
-      console.warn(`[Scraper] Google Apps Script 轉接失敗: ${error.message}，降級使用直連/FinMind...`);
-    }
-  }
 
   console.log('正在從台灣銀行下載即時匯率資料...');
   try {
