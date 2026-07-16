@@ -20,56 +20,59 @@ export default {
     }
 
     const BOT_CSV_URL = "https://rate.bot.com.tw/xrt/flcsv/0/day";
+    const BOT_HTML_URL = "https://rate.bot.com.tw/xrt?Lang=zh-TW";
     const scraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_CSV_URL)}`;
+    const htmlScraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_HTML_URL)}&render=true`;
 
     try {
+      let buyRate, sellRate;
       let response = await fetch(scraperUrl);
-      if (!response.ok) {
-        throw new Error(`ScraperAPI 回傳錯誤，狀態碼: ${response.status}`);
-      }
-
-      let csvText = await response.text();
+      let text = await response.text();
 
       // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
-      if (csvText.includes("Challenge Validation") || csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-        console.log("偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI JS 渲染 (render=true)...");
-        const renderUrl = `${scraperUrl}&render=true`;
-        response = await fetch(renderUrl);
+      if (!response.ok || text.includes("Challenge Validation") || text.includes("<html") || text.includes("<!DOCTYPE")) {
+        console.log("步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...");
+        response = await fetch(htmlScraperUrl);
         if (!response.ok) {
-          throw new Error(`ScraperAPI JS 渲染回傳錯誤，狀態碼: ${response.status}`);
+          throw new Error(`ScraperAPI HTML 渲染失敗，狀態碼: ${response.status}`);
         }
-        csvText = await response.text();
-      }
-      
-      // 解析 CSV，擷取 CNY 資料行 (相容 HTML 封裝)
-      let cleanText = csvText;
-      if (csvText.includes("<html") || csvText.includes("<pre")) {
-        const preMatch = csvText.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-        if (preMatch) {
-          cleanText = preMatch[1];
+        text = await response.text();
+
+        // 優先使用精確屬性匹配正則
+        let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
+        if (!match) {
+          // 降級使用寬鬆正則
+          match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
+        }
+
+        if (match) {
+          buyRate = parseFloat(match[1]);
+          sellRate = parseFloat(match[2]);
         } else {
-          cleanText = csvText.replace(/<[^>]*>/g, "\n");
+          throw new Error(`HTML 內容中未找到人民幣匯率欄位！收到的內容前 300 字元為: "${text.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
         }
-      }
-
-      const lines = cleanText.split(/\r?\n/);
-      let cnyData = null;
-      for (const line of lines) {
-        const cols = line.split(",");
-        if (cols.length > 0 && cols[0].trim() === "CNY") {
-          cnyData = cols;
-          break;
+      } else {
+        // 解析 CSV
+        const lines = text.split(/\r?\n/);
+        let cnyData = null;
+        for (const line of lines) {
+          const cols = line.split(",");
+          if (cols.length > 0 && cols[0].trim() === "CNY") {
+            cnyData = cols;
+            break;
+          }
         }
+
+        if (!cnyData) {
+          throw new Error(`CSV 資料中未找到人民幣 (CNY) 欄位！收到的內容前 300 字元為: "${text.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
+        }
+
+        buyRate = parseFloat(cnyData[2]); // 現金買入
+        sellRate = parseFloat(cnyData[12]); // 現金賣出
       }
 
-      if (!cnyData) {
-        throw new Error(`CSV 資料中未找到人民幣 (CNY) 欄位！收到的內容前 300 字元為: "${csvText.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
-      }
-
-      const buyRate = parseFloat(cnyData[2]); // 現金買入
-      const sellRate = parseFloat(cnyData[12]); // 現金賣出
       if (isNaN(buyRate) || isNaN(sellRate)) {
-        throw new Error("CSV 欄位數值解析錯誤，非有效數字！");
+        throw new Error("匯率解析數值錯誤，非有效數字！");
       }
 
       const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
