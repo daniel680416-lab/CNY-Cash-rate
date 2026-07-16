@@ -16,7 +16,7 @@ const MOCK_HISTORICAL_DATA = [
 
 // --- CONFIGURATION ---
 // 貼上您的 Cloudflare Worker 網址以實現前端即時同步 (例: 'https://cny-worker.xxxx.workers.dev')
-const CLOUDFLARE_WORKER_URL = ''; 
+const CLOUDFLARE_WORKER_URL = 'https://scratch.daniel680416.workers.dev/'; 
 
 // --- APP STATE ---
 let currentRates = []; // Loaded exchange rate data (Sorted by date desc)
