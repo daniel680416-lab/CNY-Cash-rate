@@ -1,26 +1,20 @@
 [Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...
 [Scraper] ScraperAPI 回應狀態碼: 200
-[Scraper] 偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI JS 渲染 (render=true)...
-[Scraper] ScraperAPI JS 渲染回應狀態碼: 500
-[Scraper] ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。
-[Scraper] ScraperAPI 回傳內容前 500 字元: "<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><title>Challenge Validation</title><link rel="stylesheet" type="text/css" href="/aFOMG_/9/X/e_DekEdj8Q/NkaL/F3QqT3wpKgg/Oz4jQ0cx/eydZ"><script type="text/javascript">function cp_clge_done(){location.reload(true);}</script><script src="/aFOMG_/9/X/e_DekEdj8Q/NkaL/F3QqT3wpKgg/AXw5ai9H/fkgu" async defer></script><script type="text/javascript">sessionStorag"
-[Scraper] 透過 ScraperAPI 獲取失敗，降級使用其他管道...
-正在從台灣銀行下載即時匯率資料...
-無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...
-正在從備用資料源 (FinMind API) 下載匯率... URL: https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=2026-07-11
-🎉 成功從 FinMind API 獲取最新匯率 (2026-07-15): 現金買進=4.659, 現金賣出=4.821, 平均值=4.74
-成功解析台銀最新匯率: 現金買進=4.659, 現金賣出=4.821, 平均值=4.74，來源=finmind
+[Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...
+[Scraper] ScraperAPI HTML 渲染回應狀態碼: 200
+🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=4.67, 現金賣出=4.832, 平均值=4.75
+成功解析台銀最新匯率: 現金買進=4.67, 現金賣出=4.832, 平均值=4.75，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-07-16 15:08): {
+準備寫入/更新匯率資料 (2026-07-16 15:16): {
   date: '2026-07-16',
-  last_updated_time: '15:08',
-  timestamp: 1784185719403,
-  buy_rate: 4.659,
-  sell_rate: 4.821,
-  average_rate: 4.74,
-  updated_at: 2026-07-16T07:08:39.403Z,
-  source: 'finmind'
+  last_updated_time: '15:16',
+  timestamp: 1784186216582,
+  buy_rate: 4.67,
+  sell_rate: 4.832,
+  average_rate: 4.75,
+  updated_at: 2026-07-16T07:16:56.582Z,
+  source: 'bot'
 }
 當日資料 Upsert 寫入成功！
 目前資料庫中有 26 筆記錄。
