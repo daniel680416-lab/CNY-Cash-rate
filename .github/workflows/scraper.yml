@@ -2,9 +2,9 @@ name: CNY Cash Rate Scraper & PWA Deployer
 
 on:
   schedule:
-    # 台灣時間週一至週五 09:18 至 16:18 每小時 18 分自動執行一次
-    # (對應 UTC 時間 01:18 至 08:18，Cron: 18 1-8 * * 1-5)
-    - cron: '18 1-8 * * 1-5'
+    # 台灣時間週一至週五 09:18 至 20:48 每半小時自動執行一次 (分鐘 18 和 48)
+    # (對應 UTC 時間 01:18 至 12:48，Cron: 18,48 1-12 * * 1-5)
+    - cron: '18,48 1-12 * * 1-5'
   push:
     branches: [ main ]
   workflow_dispatch:

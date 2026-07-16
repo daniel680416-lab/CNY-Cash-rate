@@ -14,6 +14,10 @@ const MOCK_HISTORICAL_DATA = [
   { date: "2026-07-06", buy_rate: 4.390, sell_rate: 4.552, average_rate: 4.47, timestamp: 1783317600000, last_updated_time: "16:18", source: "bot" }
 ];
 
+// --- CONFIGURATION ---
+// 貼上您的 Cloudflare Worker 網址以實現前端即時同步 (例: 'https://cny-worker.xxxx.workers.dev')
+const CLOUDFLARE_WORKER_URL = ''; 
+
 // --- APP STATE ---
 let currentRates = []; // Loaded exchange rate data (Sorted by date desc)
 let mainChartInstance = null;
@@ -189,9 +193,28 @@ async function supplementTodayRateIfMissing(data) {
 
   const latestRecordDate = data[0].date;
 
-  // 如果伺服器最新一筆日期不是今天，且現在是營業時間內或已收盤，嘗試從前端獲取今日即時數據
+  // 如果伺服器最新一筆日期不是今天，嘗試從前端獲取今日即時數據
   if (latestRecordDate !== todayStr) {
-    console.log(`[CNY Tracker] 歷史資料最新日期為 ${latestRecordDate}，今日 (${todayStr}) 尚未完成雲端排程，嘗試直連備用 API 獲取今日即時數據...`);
+    console.log(`[CNY Tracker] 歷史資料最新日期為 ${latestRecordDate}，今日 (${todayStr}) 尚未完成雲端排程，嘗試獲取今日即時數據...`);
+
+    // 1. 優先嘗試透過 Cloudflare Worker 獲取台銀官方實時匯率
+    if (typeof CLOUDFLARE_WORKER_URL === 'string' && CLOUDFLARE_WORKER_URL.trim() !== '') {
+      try {
+        console.log('[CNY Tracker] 嘗試透過 Cloudflare Worker 獲取今日即時匯率...');
+        const res = await fetch(CLOUDFLARE_WORKER_URL);
+        if (res.ok) {
+          const todayRecord = await res.json();
+          if (todayRecord && todayRecord.date === todayStr && todayRecord.buy_rate && todayRecord.sell_rate) {
+            console.log('[CNY Tracker] 🎉 成功透過 Cloudflare Worker 獲取今日即時匯率！並入列表:', todayRecord);
+            return [todayRecord, ...data];
+          }
+        }
+      } catch (err) {
+        console.warn('[CNY Tracker] 透過 Cloudflare Worker 獲取即時數據失敗:', err.message);
+      }
+    }
+
+    // 2. 降級嘗試直連 FinMind API 獲取
     try {
       const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const finmindUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=${pastDate}`;
@@ -215,15 +238,14 @@ async function supplementTodayRateIfMissing(data) {
                 last_updated_time: new Date().toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }),
                 source: 'finmind_live'
               };
-              console.log('[CNY Tracker] 🎉 成功在前端獲取今日即時匯率！並入列表:', todayRecord);
-              // 如果已經有暫時插入的，先移除避免重疊（雖然邏輯上這已是第一個）
+              console.log('[CNY Tracker] 🎉 成功從備用 API (FinMind) 獲取今日即時匯率！並入列表:', todayRecord);
               return [todayRecord, ...data];
             }
           }
         }
       }
     } catch (err) {
-      console.warn('[CNY Tracker] 前端直連 FinMind 失敗或今日資料未發佈:', err.message);
+      console.warn('[CNY Tracker] 從備用 API (FinMind) 獲取今日數據失敗:', err.message);
     }
   }
   return data;
