@@ -45,10 +45,22 @@ async function fetchRates() {
     console.log(`[Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...`);
     try {
       const scraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_CSV_URL)}`;
-      const response = await fetch(scraperUrl);
+      let response = await fetch(scraperUrl);
       console.log(`[Scraper] ScraperAPI 回應狀態碼: ${response.status}`);
       if (response.ok) {
-        const csvText = await response.text();
+        let csvText = await response.text();
+        
+        // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
+        if (csvText.includes("Challenge Validation") || csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
+          console.log("[Scraper] 偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI Premium 住宅代理...");
+          const premiumUrl = `${scraperUrl}&premium=true`;
+          response = await fetch(premiumUrl);
+          console.log(`[Scraper] ScraperAPI Premium 回應狀態碼: ${response.status}`);
+          if (response.ok) {
+            csvText = await response.text();
+          }
+        }
+
         const csvRates = parseCsvRates(csvText);
         if (csvRates) {
           console.log(`🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);

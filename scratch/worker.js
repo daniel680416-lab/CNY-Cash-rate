@@ -23,12 +23,23 @@ export default {
     const scraperUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(BOT_CSV_URL)}`;
 
     try {
-      const response = await fetch(scraperUrl);
+      let response = await fetch(scraperUrl);
       if (!response.ok) {
         throw new Error(`ScraperAPI 回傳錯誤，狀態碼: ${response.status}`);
       }
 
-      const csvText = await response.text();
+      let csvText = await response.text();
+
+      // 偵測是否被台銀 WAF 阻擋 (回傳 Challenge Validation 網頁)
+      if (csvText.includes("Challenge Validation") || csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
+        console.log("偵測到台銀 WAF 阻擋，嘗試啟用 ScraperAPI Premium 住宅代理...");
+        const premiumUrl = `${scraperUrl}&premium=true`;
+        response = await fetch(premiumUrl);
+        if (!response.ok) {
+          throw new Error(`ScraperAPI Premium 住宅代理回傳錯誤，狀態碼: ${response.status}`);
+        }
+        csvText = await response.text();
+      }
       
       // 解析 CSV，擷取 CNY 資料行
       const lines = csvText.split("\n");
@@ -42,7 +53,7 @@ export default {
       }
 
       if (!cnyData) {
-        throw new Error("CSV 資料中未找到人民幣 (CNY) 欄位！");
+        throw new Error(`CSV 資料中未找到人民幣 (CNY) 欄位！收到的內容前 300 字元為: "${csvText.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
       }
 
       const buyRate = parseFloat(cnyData[2]); // 現金買入
