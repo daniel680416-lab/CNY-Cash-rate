@@ -1,25 +1,23 @@
 [Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...
 [Scraper] ScraperAPI 回應狀態碼: 200
-[Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...
-[Scraper] ScraperAPI HTML 渲染回應狀態碼: 200
-🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=4.668, 現金賣出=4.83, 平均值=4.75
-成功解析台銀最新匯率: 現金買進=4.668, 現金賣出=4.83, 平均值=4.75，來源=bot
+🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=4.686, 現金賣出=4.848, 平均值=4.77
+成功解析台銀最新匯率: 現金買進=4.686, 現金賣出=4.848, 平均值=4.77，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-07-17 22:16): {
-  date: '2026-07-17',
-  last_updated_time: '22:16',
-  timestamp: 1784297779111,
-  buy_rate: 4.668,
-  sell_rate: 4.83,
-  average_rate: 4.75,
-  updated_at: 2026-07-17T14:16:19.111Z,
+準備寫入/更新匯率資料 (2026-07-20 12:51): {
+  date: '2026-07-20',
+  last_updated_time: '12:51',
+  timestamp: 1784523095851,
+  buy_rate: 4.686,
+  sell_rate: 4.848,
+  average_rate: 4.77,
+  updated_at: 2026-07-20T04:51:35.851Z,
   source: 'bot'
 }
 當日資料 Upsert 寫入成功！
-目前資料庫中有 27 筆記錄。
+目前資料庫中有 28 筆記錄。
 資料庫中歷史紀錄不足 30 筆，啟動歷史數據自動回填機制...
-從 FinMind 獲取到 25 筆歷史數據，準備回填...
+從 FinMind 獲取到 24 筆歷史數據，準備回填...
 歷史數據回填完畢。
 正在從 MongoDB 撈取近 30 天歷史數據...
 成功匯出近 30 天歷史匯率至: /home/runner/work/CNY-Cash-rate/CNY-Cash-rate/data.json
