@@ -6,14 +6,14 @@
 成功解析台銀最新匯率: 現金買進=4.688, 現金賣出=4.85, 平均值=4.77，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-07-21 19:59): {
+準備寫入/更新匯率資料 (2026-07-21 22:21): {
   date: '2026-07-21',
-  last_updated_time: '19:59',
-  timestamp: 1784635189247,
+  last_updated_time: '22:21',
+  timestamp: 1784643670793,
   buy_rate: 4.688,
   sell_rate: 4.85,
   average_rate: 4.77,
-  updated_at: 2026-07-21T11:59:49.247Z,
+  updated_at: 2026-07-21T14:21:10.793Z,
   source: 'bot'
 }
 當日資料 Upsert 寫入成功！
