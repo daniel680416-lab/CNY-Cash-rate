@@ -6,18 +6,18 @@
 正在從台灣銀行下載即時匯率資料...
 無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...
 正在從備用資料源 (FinMind API) 下載匯率... URL: https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=2026-08-09
-🎉 成功從 FinMind API 獲取最新匯率 (2026-08-13): 現金買進=4.669, 現金賣出=4.831, 平均值=4.75
-成功解析台銀最新匯率: 現金買進=4.669, 現金賣出=4.831, 平均值=4.75，來源=finmind
+🎉 成功從 FinMind API 獲取最新匯率 (2026-08-14): 現金買進=4.65, 現金賣出=4.812, 平均值=4.73
+成功解析台銀最新匯率: 現金買進=4.65, 現金賣出=4.812, 平均值=4.73，來源=finmind
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-08-14 14:58): {
+準備寫入/更新匯率資料 (2026-08-14 16:36): {
   date: '2026-08-14',
-  last_updated_time: '14:58',
-  timestamp: 1786690705143,
-  buy_rate: 4.669,
-  sell_rate: 4.831,
-  average_rate: 4.75,
-  updated_at: 2026-08-14T06:58:25.143Z,
+  last_updated_time: '16:36',
+  timestamp: 1786696617037,
+  buy_rate: 4.65,
+  sell_rate: 4.812,
+  average_rate: 4.73,
+  updated_at: 2026-08-14T08:36:57.037Z,
   source: 'finmind'
 }
 當日資料 Upsert 寫入成功！
