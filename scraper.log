@@ -1,27 +1,21 @@
 [Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...
-[Scraper] ScraperAPI 回應狀態碼: 403
-[Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...
-[Scraper] ScraperAPI HTML 渲染回應狀態碼: 403
-[Scraper] ScraperAPI 請求失敗: ScraperAPI HTML 渲染失敗，狀態碼: 403，降級使用其他管道...
-正在從台灣銀行下載即時匯率資料...
-無法從台銀直連獲取 CSV（可能遭遇 Challenge 阻擋），準備啟用備用資料源 (FinMind)...
-正在從備用資料源 (FinMind API) 下載匯率... URL: https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=CNY&start_date=2026-08-09
-🎉 成功從 FinMind API 獲取最新匯率 (2026-08-14): 現金買進=4.65, 現金賣出=4.812, 平均值=4.73
-成功解析台銀最新匯率: 現金買進=4.65, 現金賣出=4.812, 平均值=4.73，來源=finmind
+[Scraper] ScraperAPI 回應狀態碼: 200
+🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=4.631, 現金賣出=4.793, 平均值=4.71
+成功解析台銀最新匯率: 現金買進=4.631, 現金賣出=4.793, 平均值=4.71，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-08-14 22:01): {
-  date: '2026-08-14',
-  last_updated_time: '22:01',
-  timestamp: 1786716105087,
-  buy_rate: 4.65,
-  sell_rate: 4.812,
-  average_rate: 4.73,
-  updated_at: 2026-08-14T14:01:45.087Z,
-  source: 'finmind'
+準備寫入/更新匯率資料 (2026-08-17 10:33): {
+  date: '2026-08-17',
+  last_updated_time: '10:33',
+  timestamp: 1786934037390,
+  buy_rate: 4.631,
+  sell_rate: 4.793,
+  average_rate: 4.71,
+  updated_at: 2026-08-17T02:33:57.390Z,
+  source: 'bot'
 }
 當日資料 Upsert 寫入成功！
-目前資料庫中有 47 筆記錄。
+目前資料庫中有 48 筆記錄。
 正在從 MongoDB 撈取近 30 天歷史數據...
 成功匯出近 30 天歷史匯率至: /home/runner/work/CNY-Cash-rate/CNY-Cash-rate/data.json
 MongoDB 連線已關閉。
