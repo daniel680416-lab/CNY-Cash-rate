@@ -39,17 +39,27 @@ export default {
         text = await response.text();
 
         // 優先使用精確屬性匹配正則
-        let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
-        if (!match) {
-          // 降級使用寬鬆正則
-          match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
-        }
+        const cashBuyMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>/i);
+        const cashSellMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
+        const spotBuyMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行即期買入"[^>]*>([\d.]+)<\/td>/i);
+        const spotSellMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行即期賣出"[^>]*>([\d.]+)<\/td>/i);
 
-        if (match) {
-          buyRate = parseFloat(match[1]);
-          sellRate = parseFloat(match[2]);
+        if (cashBuyMatch && cashSellMatch) {
+          buyRate = parseFloat(cashBuyMatch[1]);
+          sellRate = parseFloat(cashSellMatch[1]);
+          spotBuyRate = spotBuyMatch ? parseFloat(spotBuyMatch[1]) : null;
+          spotSellRate = spotSellMatch ? parseFloat(spotSellMatch[1]) : null;
         } else {
-          throw new Error(`HTML 內容中未找到人民幣匯率欄位！收到的內容前 300 字元為: "${text.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
+          // 降級使用寬鬆正則
+          let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
+          if (match) {
+            buyRate = parseFloat(match[1]);
+            sellRate = parseFloat(match[2]);
+            spotBuyRate = null;
+            spotSellRate = null;
+          } else {
+            throw new Error(`HTML 內容中未找到人民幣匯率欄位！收到的內容前 300 字元為: "${text.substring(0, 300).replace(/\r?\n/g, ' ')}"`);
+          }
         }
       } else {
         // 解析 CSV
@@ -68,7 +78,9 @@ export default {
         }
 
         buyRate = parseFloat(cnyData[2]); // 現金買入
+        spotBuyRate = parseFloat(cnyData[3]); // 即期買入
         sellRate = parseFloat(cnyData[12]); // 現金賣出
+        spotSellRate = parseFloat(cnyData[13]); // 即期賣出
       }
 
       if (isNaN(buyRate) || isNaN(sellRate)) {
@@ -76,6 +88,11 @@ export default {
       }
 
       const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+      const validSpotBuy = !isNaN(spotBuyRate) ? spotBuyRate : null;
+      const validSpotSell = !isNaN(spotSellRate) ? spotSellRate : null;
+      const spotAvgRate = (validSpotBuy && validSpotSell)
+        ? Math.round(((validSpotBuy + validSpotSell) / 2) * 100) / 100
+        : null;
       
       // 取得台北時間今天的日期 (YYYY-MM-DD) 與時間 (HH:MM)
       const formatter = new Intl.DateTimeFormat("zh-TW", {
@@ -103,6 +120,9 @@ export default {
         buy_rate: buyRate,
         sell_rate: sellRate,
         average_rate: avgRate,
+        spot_buy_rate: validSpotBuy,
+        spot_sell_rate: validSpotSell,
+        spot_average_rate: spotAvgRate,
         timestamp: Date.now(),
         last_updated_time: timeStr,
         source: "bot"

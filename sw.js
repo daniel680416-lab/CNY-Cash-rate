@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cny-rate-tracker-v2';
+const CACHE_NAME = 'cny-rate-tracker-v3';
 const ASSETS_TO_CACHE = [
   './index.html',
   './index.css',
@@ -40,11 +40,17 @@ self.addEventListener('activate', (e) => {
 
 // Fetch Event - Dynamic caching strategies
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') {
+  const url = new URL(e.request.url);
+
+  // 依照全域規則：非 GET 請求或 /__/auth/* 驗證路由直接放行
+  if (e.request.method !== 'GET' || url.pathname.startsWith('/__/auth/')) {
     return;
   }
 
-  const url = new URL(e.request.url);
+  // 外部 API 請求 (如 Cloudflare Worker, FinMind 等) 直接放行，不走快取
+  if (url.origin !== self.location.origin && !ASSETS_TO_CACHE.includes(e.request.url)) {
+    return;
+  }
 
   // Network-First strategy for data.json
   if (url.pathname.endsWith('/data.json')) {

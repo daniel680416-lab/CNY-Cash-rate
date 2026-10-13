@@ -63,26 +63,39 @@ async function fetchRates() {
         text = await response.text();
 
         // 優先使用精確屬性匹配正則
-        let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
-        if (!match) {
-          // 降級使用寬鬆正則
-          match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
-        }
+        const cashBuyMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金買入"[^>]*>([\d.]+)<\/td>/i);
+        const cashSellMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行現金賣出"[^>]*>([\d.]+)<\/td>/i);
+        const spotBuyMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行即期買入"[^>]*>([\d.]+)<\/td>/i);
+        const spotSellMatch = text.match(/人民幣\s*\(CNY\)[\s\S]*?data-table="本行即期賣出"[^>]*>([\d.]+)<\/td>/i);
 
-        if (match) {
-          const buyRate = parseFloat(match[1]);
-          const sellRate = parseFloat(match[2]);
+        if (cashBuyMatch && cashSellMatch) {
+          const buyRate = parseFloat(cashBuyMatch[1]);
+          const sellRate = parseFloat(cashSellMatch[1]);
           const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-          console.log(`🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
-          return { buyRate, sellRate, averageRate, source: 'bot' };
+          const spotBuyRate = spotBuyMatch ? parseFloat(spotBuyMatch[1]) : null;
+          const spotSellRate = spotSellMatch ? parseFloat(spotSellMatch[1]) : null;
+          const spotAverageRate = (spotBuyRate && spotSellRate)
+            ? Math.round(((spotBuyRate + spotSellRate) / 2) * 100) / 100
+            : null;
+
+          console.log(`🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=${buyRate}, 現金賣出=${sellRate}, 即期買入=${spotBuyRate}, 即期賣出=${spotSellRate}`);
+          return { buyRate, sellRate, averageRate, spotBuyRate, spotSellRate, spotAverageRate, source: 'bot' };
         } else {
+          // 降級使用寬鬆正則
+          let match = text.match(/人民幣\s*\(CNY\)[\s\S]*?>([\d.]+)<\/td>[\s\S]*?>([\d.]+)<\/td>/i);
+          if (match) {
+            const buyRate = parseFloat(match[1]);
+            const sellRate = parseFloat(match[2]);
+            const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+            return { buyRate, sellRate, averageRate, spotBuyRate: null, spotSellRate: null, spotAverageRate: null, source: 'bot' };
+          }
           throw new Error(`HTML 內容中未找到人民幣匯率欄位！收到的內容前 500 字元: "${text.substring(0, 500).replace(/\r?\n/g, ' ')}"`);
         }
       } else {
         // 解析 CSV
         const csvRates = parseCsvRates(text);
         if (csvRates) {
-          console.log(`🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
+          console.log(`🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 即期買入=${csvRates.spotBuyRate}, 即期賣出=${csvRates.spotSellRate}`);
           return { ...csvRates, source: 'bot' };
         } else {
           throw new Error('ScraperAPI 回傳內容無法解析為台銀匯率 CSV 格式。');
@@ -92,7 +105,6 @@ async function fetchRates() {
       console.warn(`[Scraper] ScraperAPI 請求失敗: ${error.message}，降級使用其他管道...`);
     }
   }
-
 
   console.log('正在從台灣銀行下載即時匯率資料...');
   try {
@@ -110,7 +122,7 @@ async function fetchRates() {
       const csvText = await response.text();
       const csvRates = parseCsvRates(csvText);
       if (csvRates) {
-        console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 平均值=${csvRates.averageRate}`);
+        console.log(`🎉 成功從台銀直連獲取最新匯率: 現金買進=${csvRates.buyRate}, 現金賣出=${csvRates.sellRate}, 即期買入=${csvRates.spotBuyRate}, 即期賣出=${csvRates.spotSellRate}, 平均值=${csvRates.averageRate}`);
         return { ...csvRates, source: 'bot' };
       }
     }
@@ -144,11 +156,30 @@ function parseCsvRates(csvText) {
     }
   }
   if (cnyData) {
+    // 依據台銀 CSV 格式：
+    // cols[2]: 現金買入, cols[3]: 即期買入
+    // cols[12]: 現金賣出, cols[13]: 即期賣出
     const buyRate = parseFloat(cnyData[2]);
+    const spotBuyRate = parseFloat(cnyData[3]);
     const sellRate = parseFloat(cnyData[12]);
+    const spotSellRate = parseFloat(cnyData[13]);
+
     if (!isNaN(buyRate) && !isNaN(sellRate)) {
       const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-      return { buyRate, sellRate, averageRate };
+      const validSpotBuy = !isNaN(spotBuyRate) ? spotBuyRate : null;
+      const validSpotSell = !isNaN(spotSellRate) ? spotSellRate : null;
+      const spotAverageRate = (validSpotBuy && validSpotSell)
+        ? Math.round(((validSpotBuy + validSpotSell) / 2) * 100) / 100
+        : null;
+
+      return {
+        buyRate,
+        sellRate,
+        averageRate,
+        spotBuyRate: validSpotBuy,
+        spotSellRate: validSpotSell,
+        spotAverageRate
+      };
     }
   }
   return null;
@@ -175,29 +206,57 @@ async function fetchFromFinMind() {
   const latest = result.data[result.data.length - 1];
   const buyRate = parseFloat(latest.cash_buy);
   const sellRate = parseFloat(latest.cash_sell);
+  const spotBuyRate = parseFloat(latest.spot_buy);
+  const spotSellRate = parseFloat(latest.spot_sell);
 
   if (isNaN(buyRate) || isNaN(sellRate)) {
     throw new Error(`FinMind 匯率解析失敗: cash_buy=${latest.cash_buy}, cash_sell=${latest.cash_sell}`);
   }
 
   const averageRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
-  console.log(`🎉 成功從 FinMind API 獲取最新匯率 (${latest.date}): 現金買進=${buyRate}, 現金賣出=${sellRate}, 平均值=${averageRate}`);
+  const validSpotBuy = !isNaN(spotBuyRate) ? spotBuyRate : null;
+  const validSpotSell = !isNaN(spotSellRate) ? spotSellRate : null;
+  const spotAverageRate = (validSpotBuy && validSpotSell)
+    ? Math.round(((validSpotBuy + validSpotSell) / 2) * 100) / 100
+    : null;
+
+  console.log(`🎉 成功從 FinMind API 獲取最新匯率 (${latest.date}): 現金買進=${buyRate}, 現金賣出=${sellRate}, 即期買入=${validSpotBuy}, 即期賣出=${validSpotSell}`);
 
   return {
     buyRate,
     sellRate,
     averageRate,
+    spotBuyRate: validSpotBuy,
+    spotSellRate: validSpotSell,
+    spotAverageRate,
     source: 'finmind'
   };
 }
 
 async function syncAndExport(rates) {
   const uri = process.env.MONGODB_URI;
+  const { dateStr, timeStr, timestamp, now } = getTaipeiTimeInfo();
+
+  const document = {
+    date: dateStr,
+    last_updated_time: timeStr,
+    timestamp: timestamp,
+    buy_rate: rates.buyRate,
+    sell_rate: rates.sellRate,
+    average_rate: rates.averageRate,
+    spot_buy_rate: rates.spotBuyRate,
+    spot_sell_rate: rates.spotSellRate,
+    spot_average_rate: rates.spotAverageRate,
+    updated_at: now,
+    source: rates.source || 'bot'
+  };
+
   if (!uri) {
-    throw new Error('未設定環境變數 MONGODB_URI');
+    console.warn('⚠️ 未設定環境變數 MONGODB_URI，啟動本地模式直接更新 data.json...');
+    updateLocalDataJson(document);
+    return;
   }
 
-  const { dateStr, timeStr, timestamp, now } = getTaipeiTimeInfo();
   const client = new MongoClient(uri);
 
   try {
@@ -210,17 +269,6 @@ async function syncAndExport(rates) {
     // 確保建立 date 唯一索引
     console.log('確保建立 date 唯一索引...');
     await collection.createIndex({ date: 1 }, { unique: true });
-    
-    const document = {
-      date: dateStr,
-      last_updated_time: timeStr,
-      timestamp: timestamp,
-      buy_rate: rates.buyRate,
-      sell_rate: rates.sellRate,
-      average_rate: rates.averageRate,
-      updated_at: now,
-      source: rates.source || 'bot'
-    };
     
     console.log(`準備寫入/更新匯率資料 (${dateStr} ${timeStr}):`, document);
 
@@ -252,8 +300,17 @@ async function syncAndExport(rates) {
             for (const item of result.data) {
               const buyRate = parseFloat(item.cash_buy);
               const sellRate = parseFloat(item.cash_sell);
+              const spotBuyRate = parseFloat(item.spot_buy);
+              const spotSellRate = parseFloat(item.spot_sell);
+
               if (!isNaN(buyRate) && !isNaN(sellRate)) {
                 const avgRate = Math.round(((buyRate + sellRate) / 2) * 100) / 100;
+                const validSpotBuy = !isNaN(spotBuyRate) ? spotBuyRate : null;
+                const validSpotSell = !isNaN(spotSellRate) ? spotSellRate : null;
+                const spotAvgRate = (validSpotBuy && validSpotSell)
+                  ? Math.round(((validSpotBuy + validSpotSell) / 2) * 100) / 100
+                  : null;
+
                 // 設定為台北時間 16:00
                 const recordTime = new Date(`${item.date}T16:00:00+08:00`);
                 const doc = {
@@ -263,6 +320,9 @@ async function syncAndExport(rates) {
                   buy_rate: buyRate,
                   sell_rate: sellRate,
                   average_rate: avgRate,
+                  spot_buy_rate: validSpotBuy,
+                  spot_sell_rate: validSpotSell,
+                  spot_average_rate: spotAvgRate,
                   updated_at: new Date(),
                   source: 'finmind'
                 };
@@ -297,6 +357,9 @@ async function syncAndExport(rates) {
       buy_rate: item.buy_rate,
       sell_rate: item.sell_rate,
       average_rate: item.average_rate,
+      spot_buy_rate: item.spot_buy_rate ?? null,
+      spot_sell_rate: item.spot_sell_rate ?? null,
+      spot_average_rate: item.spot_average_rate ?? null,
       timestamp: item.timestamp,
       last_updated_time: item.last_updated_time,
       source: item.source || 'bot'
@@ -311,6 +374,45 @@ async function syncAndExport(rates) {
     await client.close();
     console.log('MongoDB 連線已關閉。');
   }
+}
+
+// 本地降級模式：直接更新根目錄 data.json
+function updateLocalDataJson(todayDoc) {
+  const outputPath = path.join(process.cwd(), 'data.json');
+  let currentList = [];
+  try {
+    if (fs.existsSync(outputPath)) {
+      currentList = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.warn('讀取本地 data.json 失敗，將建立新檔案:', e.message);
+  }
+
+  // 檢查是否已存在當日紀錄
+  const existingIdx = currentList.findIndex(item => item.date === todayDoc.date);
+  const formattedDoc = {
+    date: todayDoc.date,
+    buy_rate: todayDoc.buy_rate,
+    sell_rate: todayDoc.sell_rate,
+    average_rate: todayDoc.average_rate,
+    spot_buy_rate: todayDoc.spot_buy_rate ?? null,
+    spot_sell_rate: todayDoc.spot_sell_rate ?? null,
+    spot_average_rate: todayDoc.spot_average_rate ?? null,
+    timestamp: todayDoc.timestamp,
+    last_updated_time: todayDoc.last_updated_time,
+    source: todayDoc.source || 'bot'
+  };
+
+  if (existingIdx >= 0) {
+    currentList[existingIdx] = formattedDoc;
+  } else {
+    currentList.unshift(formattedDoc);
+  }
+
+  // 保留近 30 筆
+  const trimmed = currentList.slice(0, 30);
+  fs.writeFileSync(outputPath, JSON.stringify(trimmed, null, 2), 'utf-8');
+  console.log(`🎉 [本地模式] 成功將今日最新匯率更新至 ${outputPath} (共 ${trimmed.length} 筆)`);
 }
 
 async function main() {

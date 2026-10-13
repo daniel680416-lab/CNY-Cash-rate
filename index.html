@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>人民幣現金匯率追蹤器 | CNY Cash Rate PWA</title>
+  <title>人民幣匯率追蹤器 (現金 / 即期) | CNY Rate Tracker PWA</title>
   
   <!-- SEO Meta Tags -->
-  <meta name="description" content="每日自動追蹤台灣銀行人民幣現金買入與賣出匯率，計算平均值並繪製歷史趨勢折線圖，提供離線可用之 PWA 換算工具。">
-  <meta name="keywords" content="人民幣, 匯率, 台灣銀行, 現金匯率, PWA, 匯率換算, 趨勢圖">
+  <meta name="description" content="每日自動與盤中即時追蹤台灣銀行人民幣現金與即期匯率，計算平均值並繪製歷史趨勢折線圖，提供離線可用之 PWA 換算工具。">
+  <meta name="keywords" content="人民幣, 匯率, 台灣銀行, 現金匯率, 即期匯率, PWA, 匯率換算, 趨勢圖">
   <meta name="author" content="Antigravity">
   
   <!-- Favicon and PWA Manifest & Theme -->
@@ -45,8 +45,8 @@
           <i data-lucide="trending-up"></i>
         </div>
         <div>
-          <h1>人民幣現金匯率追蹤器</h1>
-          <span class="sub-title">CNY Cash Rate Tracker PWA</span>
+          <h1>人民幣匯率追蹤器</h1>
+          <span class="sub-title">CNY Cash & Spot Rate Tracker PWA</span>
         </div>
       </div>
       <div class="header-actions">
@@ -54,6 +54,9 @@
           <span class="status-dot online"></span>
           <span class="status-text">在線</span>
         </div>
+        <button id="refreshBtn" class="btn-icon" aria-label="即時重新整理匯率" title="即時重新整理匯率">
+          <i data-lucide="refresh-cw" class="icon-refresh"></i>
+        </button>
         <button id="themeToggle" class="btn-icon" aria-label="切換主題模式">
           <i data-lucide="sun" class="icon-sun"></i>
           <i data-lucide="moon" class="icon-moon"></i>
@@ -101,14 +104,32 @@
         <!-- Tab 1: Dashboard -->
         <section class="tab-panel active" id="panel-dashboard">
           <!-- Hero Section: Today's Rates -->
-          <div class="panel-header-section">
-            <h2>今日即時匯率</h2>
-            <p class="update-time" id="lastUpdatedTime">最後更新時間：讀取中...</p>
+          <div class="panel-header-section flex-header">
+            <div>
+              <h2>今日即時匯率</h2>
+              <p class="update-time" id="lastUpdatedTime">最後更新時間：讀取中...</p>
+            </div>
+            <div class="rate-type-selector" id="dashboardRateTypeSelector">
+              <button class="btn-toggle active" id="btn-show-cash" data-mode="cash">
+                <i data-lucide="banknote"></i> 現金匯率
+              </button>
+              <button class="btn-toggle" id="btn-show-spot" data-mode="spot">
+                <i data-lucide="credit-card"></i> 即期匯率
+              </button>
+              <button class="btn-toggle" id="btn-show-all" data-mode="all">
+                <i data-lucide="columns-2"></i> 對照比較
+              </button>
+            </div>
           </div>
 
-          <div class="rate-cards-grid">
-            <!-- Buy Card -->
-            <div class="rate-card card-buy">
+          <!-- Section Label for Cash Rates -->
+          <div class="rate-section-title" id="cashSectionTitle" style="display: none;">
+            <span><i data-lucide="banknote"></i> 台灣銀行現金匯率 (臨櫃現鈔)</span>
+          </div>
+
+          <div class="rate-cards-grid" id="cashCardsGrid">
+            <!-- Cash Buy Card -->
+            <div class="rate-card card-buy" id="card-cash-buy">
               <div class="card-header">
                 <span class="card-title">現金買進 (台銀買回)</span>
                 <i data-lucide="arrow-down-right" class="icon-buy"></i>
@@ -123,8 +144,8 @@
               </div>
             </div>
 
-            <!-- Sell Card -->
-            <div class="rate-card card-sell">
+            <!-- Cash Sell Card -->
+            <div class="rate-card card-sell" id="card-cash-sell">
               <div class="card-header">
                 <span class="card-title">現金賣出 (台銀賣給您)</span>
                 <i data-lucide="arrow-up-right" class="icon-sell"></i>
@@ -139,10 +160,10 @@
               </div>
             </div>
 
-            <!-- Average Card -->
-            <div class="rate-card card-avg">
+            <!-- Cash Average Card -->
+            <div class="rate-card card-avg" id="card-cash-avg">
               <div class="card-header">
-                <span class="card-title">計算平均值 (四捨五入)</span>
+                <span class="card-title">現金平均值 (四捨五入)</span>
                 <i data-lucide="scale" class="icon-avg"></i>
               </div>
               <div class="card-value-wrapper">
@@ -156,6 +177,79 @@
             </div>
           </div>
 
+          <!-- Section Label for Spot Rates -->
+          <div class="rate-section-title" id="spotSectionTitle" style="display: none;">
+            <span><i data-lucide="credit-card"></i> 台灣銀行即期匯率 (網銀/外幣轉帳)</span>
+          </div>
+
+          <div class="rate-cards-grid" id="spotCardsGrid" style="display: none;">
+            <!-- Spot Buy Card -->
+            <div class="rate-card card-spot-buy" id="card-spot-buy">
+              <div class="card-header">
+                <span class="card-title">即期買入 (外幣換回台幣)</span>
+                <i data-lucide="arrow-down-right" class="icon-spot-buy"></i>
+              </div>
+              <div class="card-value-wrapper">
+                <span class="currency-symbol">NT$</span>
+                <span class="rate-value" id="spotBuyRateValue">--.--</span>
+              </div>
+              <div class="card-footer">
+                <span class="change-label" id="spotBuyRateChange">--%</span>
+                <span class="change-desc">較昨日收盤</span>
+              </div>
+            </div>
+
+            <!-- Spot Sell Card -->
+            <div class="rate-card card-spot-sell" id="card-spot-sell">
+              <div class="card-header">
+                <span class="card-title">即期賣出 (線上結匯外幣)</span>
+                <i data-lucide="arrow-up-right" class="icon-spot-sell"></i>
+              </div>
+              <div class="card-value-wrapper">
+                <span class="currency-symbol">NT$</span>
+                <span class="rate-value" id="spotSellRateValue">--.--</span>
+              </div>
+              <div class="card-footer">
+                <span class="change-label" id="spotSellRateChange">--%</span>
+                <span class="change-desc">較昨日收盤</span>
+              </div>
+            </div>
+
+            <!-- Spot Average Card -->
+            <div class="rate-card card-spot-avg" id="card-spot-avg">
+              <div class="card-header">
+                <span class="card-title">即期平均值 (四捨五入)</span>
+                <i data-lucide="scale" class="icon-spot-avg"></i>
+              </div>
+              <div class="card-value-wrapper">
+                <span class="currency-symbol">NT$</span>
+                <span class="rate-value gradient-text-spot" id="spotAvgRateValue">--.--</span>
+              </div>
+              <div class="card-footer">
+                <span class="change-label" id="spotAvgRateChange">--%</span>
+                <span class="change-desc">較昨日收盤</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spread Comparison Info Box -->
+          <div class="glass-card spread-compare-card" id="spreadCompareCard">
+            <div class="spread-header">
+              <i data-lucide="arrow-left-right"></i>
+              <span class="spread-title">即期與現金價差分析</span>
+            </div>
+            <div class="spread-grid">
+              <div class="spread-item">
+                <span class="spread-label">換匯省錢分析 (賣出價)：</span>
+                <span class="spread-val" id="spreadSellDiff">計算中...</span>
+              </div>
+              <div class="spread-item">
+                <span class="spread-label">結售賺取分析 (買進價)：</span>
+                <span class="spread-val" id="spreadBuyDiff">計算中...</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Quick Trend Preview & Alert Banner -->
           <div class="quick-view-container">
             <div class="alert-banner hidden" id="thresholdAlertBanner">
@@ -164,7 +258,10 @@
             </div>
             
             <div class="glass-card preview-card">
-              <h3>走勢簡介 (7日平均值)</h3>
+              <div class="preview-header">
+                <h3 id="sparklineTitle">走勢簡介 (7日平均值)</h3>
+                <span class="preview-badge" id="liveBadge">盤中即時更新</span>
+              </div>
               <div class="sparkline-wrapper">
                 <canvas id="sparklineChart" height="80"></canvas>
               </div>
@@ -179,18 +276,25 @@
               <h2>匯率歷史走勢</h2>
               <p>分析買入、賣出及平均匯率的波動趨勢</p>
             </div>
-            <div class="chart-controls">
-              <button class="btn-toggle active" data-range="7">7天</button>
-              <button class="btn-toggle" data-range="30">30天</button>
-              <button class="btn-toggle" data-range="90">90天</button>
-              <button class="btn-toggle" data-range="365">1年</button>
+            <div class="chart-controls-wrapper">
+              <div class="chart-controls" id="trendRateTypeControls">
+                <button class="btn-toggle active" data-type="cash">現金</button>
+                <button class="btn-toggle" data-type="spot">即期</button>
+                <button class="btn-toggle" data-type="compare">現金 vs 即期</button>
+              </div>
+              <div class="chart-controls" id="trendRangeControls">
+                <button class="btn-toggle active" data-range="7">7天</button>
+                <button class="btn-toggle" data-range="30">30天</button>
+                <button class="btn-toggle" data-range="90">90天</button>
+                <button class="btn-toggle" data-range="365">1年</button>
+              </div>
             </div>
           </div>
 
           <div class="glass-card chart-card">
-            <div class="chart-legend-custom">
-              <span class="legend-item"><span class="legend-color color-buy"></span>現金買進</span>
-              <span class="legend-item"><span class="legend-color color-sell"></span>現金賣出</span>
+            <div class="chart-legend-custom" id="chartLegendCustom">
+              <span class="legend-item"><span class="legend-color color-buy"></span>買進匯率</span>
+              <span class="legend-item"><span class="legend-color color-sell"></span>賣出匯率</span>
               <span class="legend-item"><span class="legend-color color-avg"></span>平均匯率</span>
             </div>
             <div class="main-chart-wrapper">
@@ -203,15 +307,17 @@
         <section class="tab-panel" id="panel-calculator">
           <div class="panel-header-section">
             <h2>匯率雙向計算機</h2>
-            <p>使用最新取得的台銀匯率進行台幣與人民幣換算</p>
+            <p>使用最新取得的台銀現金與即期匯率進行台幣與人民幣換算</p>
           </div>
 
           <div class="calculator-grid">
             <div class="glass-card calc-card">
               <div class="calc-type-selector">
-                <button class="btn-toggle active" id="calc-buy-tab">依現金買進換算 (匯出回台幣)</button>
-                <button class="btn-toggle" id="calc-sell-tab">依現金賣出換算 (用台幣換人民幣)</button>
-                <button class="btn-toggle" id="calc-avg-tab">依平均匯率換算 (參考用)</button>
+                <button class="btn-toggle active" id="calc-cash-sell-tab" data-calc="cash_sell">現金賣出 (換現鈔)</button>
+                <button class="btn-toggle" id="calc-spot-sell-tab" data-calc="spot_sell">即期賣出 (網銀結匯)</button>
+                <button class="btn-toggle" id="calc-cash-buy-tab" data-calc="cash_buy">現金買進 (現鈔換台幣)</button>
+                <button class="btn-toggle" id="calc-spot-buy-tab" data-calc="spot_buy">即期買入 (外幣換台幣)</button>
+                <button class="btn-toggle" id="calc-avg-tab" data-calc="avg">平均參考價</button>
               </div>
 
               <div class="calc-row">
@@ -238,7 +344,12 @@
 
               <div class="calc-info-box">
                 <i data-lucide="info"></i>
-                <span id="calc-rate-info">當前計算匯率：1 CNY = 4.47 TWD</span>
+                <span id="calc-rate-info">當前計算匯率：1 CNY = 4.855 TWD</span>
+              </div>
+
+              <div class="calc-tip-box" id="calc-tip-box">
+                <i data-lucide="lightbulb"></i>
+                <span id="calc-tip-text">小提示：即期結匯通常比現金換鈔更便宜！</span>
               </div>
             </div>
           </div>
@@ -249,7 +360,7 @@
           <div class="panel-header-section flex-header">
             <div>
               <h2>數據歷史表</h2>
-              <p>儲存於 MongoDB Atlas 的歷史收盤價紀錄</p>
+              <p>儲存於資料庫的歷史收盤與即時行情紀錄 (包含現金與即期)</p>
             </div>
             <div class="table-actions">
               <button class="btn btn-secondary btn-sm" id="exportCsvBtn">
@@ -267,16 +378,19 @@
                 <thead>
                   <tr>
                     <th>日期</th>
-                    <th>現金買進 (TWD)</th>
-                    <th>現金賣出 (TWD)</th>
-                    <th>平均匯率</th>
+                    <th>現金買進</th>
+                    <th>現金賣出</th>
+                    <th>即期買入</th>
+                    <th>即期賣出</th>
+                    <th>現金平均</th>
+                    <th>即期平均</th>
                     <th>最後更新時間</th>
                     <th>資料來源</th>
                   </tr>
                 </thead>
                 <tbody id="historyTableBody">
                   <tr>
-                    <td colspan="6" class="table-loading">正在從 MongoDB 載入數據...</td>
+                    <td colspan="9" class="table-loading">正在載入匯率數據...</td>
                   </tr>
                 </tbody>
               </table>
