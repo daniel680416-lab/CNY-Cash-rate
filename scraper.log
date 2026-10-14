@@ -1,24 +1,26 @@
 [Scraper] 偵測到 ScraperAPI 金鑰，嘗試透過 ScraperAPI 獲取 100% 同步匯率...
 [Scraper] ScraperAPI 回應狀態碼: 200
-🎉 [Scraper] 成功透過 ScraperAPI 獲取台銀官方匯率: 現金買進=4.696, 現金賣出=4.858, 即期買入=4.763, 即期賣出=4.823
-成功解析台銀最新匯率: 現金買進=4.696, 現金賣出=4.858, 平均值=4.78，來源=bot
+[Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...
+[Scraper] ScraperAPI HTML 渲染回應狀態碼: 200
+🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=4.692, 現金賣出=4.854, 即期買入=4.759, 即期賣出=4.819
+成功解析台銀最新匯率: 現金買進=4.692, 現金賣出=4.854, 平均值=4.77，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-10-14 19:48): {
-  date: '2026-10-14',
-  last_updated_time: '19:48',
-  timestamp: 1791978538231,
-  buy_rate: 4.696,
-  sell_rate: 4.858,
-  average_rate: 4.78,
-  spot_buy_rate: 4.763,
-  spot_sell_rate: 4.823,
+準備寫入/更新匯率資料 (2026-10-15 01:08): {
+  date: '2026-10-15',
+  last_updated_time: '01:08',
+  timestamp: 1791997712514,
+  buy_rate: 4.692,
+  sell_rate: 4.854,
+  average_rate: 4.77,
+  spot_buy_rate: 4.759,
+  spot_sell_rate: 4.819,
   spot_average_rate: 4.79,
-  updated_at: 2026-10-14T11:48:58.231Z,
+  updated_at: 2026-10-14T17:08:32.514Z,
   source: 'bot'
 }
 當日資料 Upsert 寫入成功！
-目前資料庫中有 92 筆記錄。
+目前資料庫中有 93 筆記錄。
 正在從 MongoDB 撈取近 30 天歷史數據...
 成功匯出近 30 天歷史匯率至: /home/runner/work/CNY-Cash-rate/CNY-Cash-rate/data.json
 MongoDB 連線已關閉。
