@@ -2,21 +2,21 @@
 [Scraper] ScraperAPI 回應狀態碼: 200
 [Scraper] 步驟 1 失敗（遭 WAF 阻擋或非 CSV），嘗試步驟 2: 透過 ScraperAPI 渲染 HTML...
 [Scraper] ScraperAPI HTML 渲染回應狀態碼: 200
-🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=4.833, 現金賣出=4.995, 即期買入=4.9, 即期賣出=4.96
-成功解析台銀最新匯率: 現金買進=4.833, 現金賣出=4.995, 平均值=4.91，來源=bot
+🎉 [Scraper] 成功從 HTML 渲染解析匯率: 現金買進=4.835, 現金賣出=4.997, 即期買入=4.902, 即期賣出=4.962
+成功解析台銀最新匯率: 現金買進=4.835, 現金賣出=4.997, 平均值=4.92，來源=bot
 正在連線至 MongoDB Atlas...
 確保建立 date 唯一索引...
-準備寫入/更新匯率資料 (2026-11-10 02:45): {
+準備寫入/更新匯率資料 (2026-11-10 16:24): {
   date: '2026-11-10',
-  last_updated_time: '02:45',
-  timestamp: 1794249955547,
-  buy_rate: 4.833,
-  sell_rate: 4.995,
-  average_rate: 4.91,
-  spot_buy_rate: 4.9,
-  spot_sell_rate: 4.96,
+  last_updated_time: '16:24',
+  timestamp: 1794299060173,
+  buy_rate: 4.835,
+  sell_rate: 4.997,
+  average_rate: 4.92,
+  spot_buy_rate: 4.902,
+  spot_sell_rate: 4.962,
   spot_average_rate: 4.93,
-  updated_at: 2026-11-09T18:45:55.547Z,
+  updated_at: 2026-11-10T08:24:20.173Z,
   source: 'bot'
 }
 當日資料 Upsert 寫入成功！
