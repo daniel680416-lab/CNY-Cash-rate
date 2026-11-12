@@ -1066,29 +1066,47 @@ function exportToJSON() {
   document.body.removeChild(link);
 }
 
-// --- THEME SWITCHING ---
+// --- THEME SWITCHING (Modern Web Guidance) ---
 function setupTheme() {
   const toggleBtn = document.getElementById('themeToggle');
   if (!toggleBtn) return;
 
   const cachedTheme = localStorage.getItem('cny_tracker_theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
 
   if (cachedTheme === 'light') {
+    document.documentElement.classList.add('light-mode');
     document.body.classList.add('light-mode');
+    if (colorSchemeMeta) colorSchemeMeta.content = 'light';
   } else if (cachedTheme === 'dark' || prefersDark) {
+    document.documentElement.classList.remove('light-mode');
     document.body.classList.remove('light-mode');
+    if (colorSchemeMeta) colorSchemeMeta.content = 'dark';
   } else {
+    document.documentElement.classList.remove('light-mode');
     document.body.classList.remove('light-mode');
+    if (colorSchemeMeta) colorSchemeMeta.content = 'light dark';
   }
 
   toggleBtn.addEventListener('click', () => {
-    document.body.classList.toggle('light-mode');
-    const isLight = document.body.classList.contains('light-mode');
-    localStorage.setItem('cny_tracker_theme', isLight ? 'light' : 'dark');
+    const isCurrentlyLight = document.body.classList.contains('light-mode') || document.documentElement.classList.contains('light-mode');
+    const nextIsLight = !isCurrentlyLight;
+
+    if (nextIsLight) {
+      document.documentElement.classList.add('light-mode');
+      document.body.classList.add('light-mode');
+      if (colorSchemeMeta) colorSchemeMeta.content = 'light';
+      localStorage.setItem('cny_tracker_theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+      document.body.classList.remove('light-mode');
+      if (colorSchemeMeta) colorSchemeMeta.content = 'dark';
+      localStorage.setItem('cny_tracker_theme', 'dark');
+    }
 
     // 重新繪製走勢圖配合亮暗色
-    const activeTab = document.querySelector('.nav-item.active').getAttribute('data-tab');
+    const activeTab = document.querySelector('.nav-item.active')?.getAttribute('data-tab');
     if (activeTab === 'trends' && currentRates.length > 0) {
       renderMainTrendChart(activeTrendDays);
     }

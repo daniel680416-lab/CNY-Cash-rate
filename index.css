@@ -3,6 +3,7 @@
    -------------------------------------------------- */
 
 :root {
+  color-scheme: dark;
   /* Dark Mode Palette (Default) */
   --bg-color: #0b0f19;
   --panel-bg: rgba(15, 23, 42, 0.4);
@@ -54,8 +55,10 @@
   --shadow-glow: 0 0 20px 0px rgba(99, 102, 241, 0.2);
 }
 
-/* Light Mode Override */
+/* Light Mode Override (Modern Web Guidance) */
+:root.light-mode,
 body.light-mode {
+  color-scheme: light;
   --bg-color: #f8fafc;
   --panel-bg: rgba(255, 255, 255, 0.5);
   --card-bg: rgba(255, 255, 255, 0.7);
@@ -234,7 +237,9 @@ body {
 }
 
 /* Light / Dark Mode Toggle Icon Switch */
+:root.light-mode .icon-sun,
 body.light-mode .icon-sun,
+:root:not(.light-mode) .icon-moon,
 body:not(.light-mode) .icon-moon {
   display: none;
 }
@@ -911,6 +916,7 @@ body:not(.light-mode) .icon-moon {
   font-family: var(--font-display);
 }
 
+:root.light-mode .history-table th,
 body.light-mode .history-table th {
   background: rgba(15, 23, 42, 0.03);
 }
@@ -923,6 +929,7 @@ body.light-mode .history-table th {
   background: rgba(255,255,255,0.02);
 }
 
+:root.light-mode .history-table tbody tr:hover,
 body.light-mode .history-table tbody tr:hover {
   background: rgba(0,0,0,0.01);
 }

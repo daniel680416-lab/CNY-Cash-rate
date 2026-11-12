@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cny-rate-tracker-v3';
+const CACHE_NAME = 'cny-rate-tracker-v4';
 const ASSETS_TO_CACHE = [
   './index.html',
   './index.css',
